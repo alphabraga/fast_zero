@@ -25,11 +25,10 @@ def read_root():
 
 @app.get('/users', status_code=HTTPStatus.OK, response_model=UsersPublic)
 def list_users():
-    users = UsersPublic(users=database)
-    return users
+    return {'users': database}
 
 
-@app.post('/users', status_code=HTTPStatus.CREATED, response_model=UserPublic)
+@app.post('/user', status_code=HTTPStatus.CREATED, response_model=UserPublic)
 def create_user(user: UserSchema):
     auto_increment_id = len(database) + 1
 
