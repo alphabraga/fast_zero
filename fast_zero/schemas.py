@@ -5,12 +5,20 @@ class Message(BaseModel):
     message: str
 
 
+class UserCreate(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+
+
 class UserPublic(BaseModel):
+    id: int
     username: str
     email: EmailStr
 
 
 class UserSchema(BaseModel):
+    id: int
     username: str
     email: EmailStr
     password: str
@@ -21,4 +29,4 @@ class UserDB(UserSchema):
 
 
 class UsersPublic(BaseModel):
-    users: list[UserPublic]
+    users: list[UserSchema]
