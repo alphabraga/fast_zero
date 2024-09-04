@@ -34,11 +34,25 @@ def test_list_user_with_no_users(client):
 
 
 def test_list_user_with_user(client, user):
-
     response = client.get('/users')
     users = response.json()
     assert response.status_code == HTTPStatus.OK
     assert len(users['users']) >= 1
+
+
+def test_update_user_dont_exists(client):
+    user = {
+        'id': 999,
+        'username': 'aaaaa',
+        'password': '491901',
+        'email': 'aaaaa@hotmail.com',
+    }
+
+    not_exists_id = 999
+
+    response = client.put(f'/user/{not_exists_id}', json=user)
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_update_user(client):
@@ -69,3 +83,13 @@ def test_update_user(client):
     updated_user = response.json()
 
     assert updated_user['username'] == 'alfredo'
+
+
+def test_delete_user_not_exists(client):
+    response = client.delete('/user/9999')
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_delete_user(client, user):
+    response = client.delete(f'/user/{user.id}')
+    assert response.status_code == HTTPStatus.OK

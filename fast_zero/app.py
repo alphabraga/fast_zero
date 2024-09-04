@@ -120,8 +120,20 @@ def update_user(
 @app.delete(
     '/user/{id}',
     status_code=HTTPStatus.OK,
-    response_model=Message,
     tags=['usuarios'],
 )
-def delete(id: int):
-    [][id] = None
+def delete(id: int, session: Session = Depends(get_session)):
+    db_user = session.scalar(select(User).where(User.id == id))
+
+    if not db_user:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail=f'User with user id {id} not found',
+        )
+
+    session.delete(db_user)
+    session.commit()
+
+    message = Message(message=f'User with id {id} deleted with success')
+
+    return message
