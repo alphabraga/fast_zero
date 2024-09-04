@@ -1,5 +1,7 @@
 from http import HTTPStatus
 
+# from fast_zero.schemas import UserPublic
+
 
 def test_root_deve_retornar_ok_e_ola_mundo(client):
     response = client.get('/')
@@ -22,13 +24,21 @@ def test_create_user(client):
     assert response.json()
 
 
-def test_list_user(client):
+def test_list_user_with_no_users(client):
     response = client.get('/users')
 
     users = response.json()
 
     assert response.status_code == HTTPStatus.OK
-    assert isinstance(users, dict)
+    assert users == {'users': []}
+
+
+def test_list_user_with_user(client, user):
+
+    response = client.get('/users')
+    users = response.json()
+    assert response.status_code == HTTPStatus.OK
+    assert len(users['users']) >= 1
 
 
 def test_update_user(client):
@@ -47,11 +57,15 @@ def test_update_user(client):
     assert username == 'aaaaa'
 
     saved_user['username'] = 'alfredo'
+    saved_user['password'] = '491901'
+    saved_user['email'] = 'aaaaa@hotmail.com'
 
     id = int(saved_user.get('id'))
 
     response = client.put(f'/user/{id}', json=saved_user)
 
+    response.status_code == HTTPStatus.OK
+
     updated_user = response.json()
 
-    assert updated_user.get('username') == 'alfredo'
+    assert updated_user['username'] == 'alfredo'

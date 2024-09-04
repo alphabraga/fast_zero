@@ -1,54 +1,22 @@
 from http import HTTPStatus
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from fast_zero.database import get_session
+from fast_zero.models import User
 from fast_zero.schemas import (
     Message,
     UserCreate,
-    UserDB,
+    UserList,
     UserPublic,
-    UsersPublic,
+    UserSchema,
 )
 
 app = FastAPI(
-    title='Fast Zero',
-    summary='Um sistema do curso fast zero',
-    version='1.0.2',
-    contact='suporte@emap.ma.gov.br',
+    title='Fast Zero', summary='Um sistema do curso fast zero', version='1.0.2'
 )
-
-database = [
-    {
-        'id': 1,
-        'username': 'um',
-        'email': 'um@example.com',
-        'password': '111111',
-    },
-    {
-        'id': 2,
-        'username': 'dois',
-        'email': 'dois@example.com',
-        'password': '111111',
-    },
-    {
-        'id': 3,
-        'username': 'tres',
-        'email': 'tres@example.com',
-        'password': '111111',
-    },
-    {
-        'id': 4,
-        'username': 'quatro',
-        'email': 'quatro@example.com',
-        'password': '111111',
-    },
-    {
-        'id': 5,
-        'username': 'cinco',
-        'email': 'cinco@example.com',
-        'password': '111111',
-    },
-]
 
 
 @app.get('/', status_code=HTTPStatus.OK, response_model=Message)
@@ -59,11 +27,17 @@ def read_root():
     return message
 
 
-@app.get('/users', status_code=HTTPStatus.OK, tags=['usuarios'])
-def list_users():
-    users = UsersPublic(users=database)
-
-    return users
+@app.get(
+    '/users',
+    status_code=HTTPStatus.OK,
+    response_model=UserList,
+    tags=['usuarios'],
+)
+def list_users(
+    skip: int = 0, limit: int = 100, session: Session = Depends(get_session)
+):
+    users = session.scalars(select(User).offset(skip).limit(limit)).all()
+    return {'users': users}
 
 
 @app.post(
@@ -72,13 +46,32 @@ def list_users():
     response_model=UserPublic,
     tags=['usuarios'],
 )
-def create_user(user: UserCreate):
+def create_user(user: UserCreate, session: Session = Depends(get_session)):
     """Cadastrar um usuario"""
-    auto_increment_id = len(database) + 1
-    userDB = UserDB(**user.model_dump(), id=auto_increment_id)
-    database.append(userDB)
+    db_user = session.scalar(
+        select(User).where(
+            (User.username == user.username) | (User.email == user.email)
+        )
+    )
 
-    return userDB
+    if db_user:
+        if db_user.username == user.username:
+            raise HTTPException(
+                detail='Ja existe username', status_code=HTTPStatus.BAD_REQUEST
+            )
+
+        elif db_user.email == user.email:
+            raise HTTPException(
+                detail='Ja existe email', status_code=HTTPStatus.BAD_REQUEST
+            )
+
+    user_db = User(**user.model_dump())
+
+    session.add(user_db)
+    session.commit()
+    session.refresh(user_db)
+
+    return user_db
 
 
 @app.get(
@@ -89,7 +82,7 @@ def create_user(user: UserCreate):
 )
 def get_user(id: int):
     try:
-        data = database[id - 1]
+        data = [][id - 1]
         return data
     except Exception:
         raise HTTPException(
@@ -104,24 +97,31 @@ def get_user(id: int):
     response_model=UserPublic,
     tags=['usuarios'],
 )
-def update_user(user_id: int, user: UserPublic):
-    try:
-        database[user_id - 1]
-    except Exception:
+def update_user(
+    user_id: int, user: UserSchema, session: Session = Depends(get_session)
+):
+    db_user = session.scalar(select(User).where(User.id == user_id))
+
+    if not db_user:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
-            detail=f'user with {user_id} not found',
+            detail=f'User with user id {user_id} not found',
         )
 
-    database[user_id - 1] = user
-    return UserPublic(**user.model_dump())
+    db_user.username = user.username
+    db_user.password = user.password
+    db_user.email = user.email
+    session.commit()
+    session.refresh(db_user)
+
+    return db_user
 
 
 @app.delete(
-    '/users/{id}',
+    '/user/{id}',
     status_code=HTTPStatus.OK,
     response_model=Message,
     tags=['usuarios'],
 )
 def delete(id: int):
-    database[id] = None
+    [][id] = None
